@@ -1,0 +1,3 @@
+ vtr 40
+ vazio 0
+ vazio 0

@@ -10,37 +10,33 @@
 #include <locale.h>
 
 #define PI 3.14
+#define MAX_JOGADORES 3
 
-typedef enum
-{
-    PARADA = 0,
-    ESQUERDA = 1,
-    DIREITA = 2,
-    CIMA = 3,
-    BAIXO = 4
+typedef enum{
+    PARADA,
+    ESQUERDA,
+    DIREITA,
+    CIMA,
+    BAIXO
 }Direcao;
 
-typedef struct Coordenada 
-{
+typedef struct Coordenada {
     int x, y;
 }Coordenada;
 
-typedef struct Nodo
-{
+typedef struct Nodo{
     Coordenada pos;
     float angulo;
     struct Nodo *proximo;
 } Nodo;
 
-typedef struct jogador
-{
+typedef struct jogador{
     char nome[50];
     int pontuacao;
 } Jogador;
-Jogador ranking[3];
+Jogador ranking [MAX_JOGADORES];
 
-typedef struct curva
-{
+typedef struct curva{
     int ordem;
     float angulo;
 }Curva;
@@ -50,7 +46,7 @@ typedef struct curva
 int obstaculos[5][2] ={ {150, 150}, {650, 150}, {400, 300}, {150, 450}, {650, 450}};
 
 // Funcao para aumentar a cabeça
-void crescer_cabeça(Nodo *cabeca) {
+void crescer_cabeça(Nodo *cabeca){
     Nodo *novo = (Nodo *)malloc(sizeof(Nodo));
     
     novo->pos.x = -100; 
@@ -59,25 +55,82 @@ void crescer_cabeça(Nodo *cabeca) {
 
     //Achar a ponta da cauda
     Nodo *aux = cabeca;
-    while (aux->proximo != NULL) {
-        aux = aux->proximo;
+    while (aux -> proximo != NULL){
+     aux = aux -> proximo;
     }
 
     aux->proximo = novo; 
+  
+}
 
-    void gerar_ranking(){
-        FILE *file = fopen("ranking.txt", "r");
-    if (file){
-        for(int i = 0; i < 3; i++) {
-            fscanf(file, "%s %d", ranking[i].nome, &ranking[i].pontuacao);
+void ler_ranking(){
+    FILE *file = fopen("ranking.txt", "r");
+    if (file != NULL){
+    int i;
+        for ( i = 0; i < MAX_JOGADORES; i++){
+            if (fscanf(file, "%s %d", ranking[i].nome, &ranking[i].pontuacao) != 2){
+             strcpy(ranking[i].nome, "vazio");
+             ranking[i].pontuacao = 0;
+            }
         }
         fclose(file);
+    }else{
+        int i;
+        for ( i = 0; i < MAX_JOGADORES; i++){
+         strcpy(ranking[i].nome, "vazio");
+         ranking[i].pontuacao = 0;
+        }
+        
     }
+}
+
+int busca_jogador(char *nome){
+    int i;
+    for ( i = 0; i < MAX_JOGADORES; i++){
+        if (strcmp(ranking[i].nome, nome) == 0){
+         return i;
+        }
+    }
+    return -1;
+}
+
+void salvar_ordenar_ranking(char *nome, int pontos_atuais){
+    int pos = busca_jogador(nome);
+    
+    if (pos != -1){
+        if (pontos_atuais > ranking[pos].pontuacao){
+            ranking[pos].pontuacao = pontos_atuais;
+        }
+    }else{
+        if (pontos_atuais > ranking[MAX_JOGADORES -1 ].pontuacao){
+            strcpy(ranking[MAX_JOGADORES -1].nome, nome);
+            ranking[MAX_JOGADORES - 1].pontuacao = pontos_atuais;
+        }
+    }
+
+    int i, j;
+    for ( i = 0; i < MAX_JOGADORES -1; i++){
+        for ( j = 0; j < MAX_JOGADORES -1 -i; j++){
+            if (ranking[j].pontuacao < ranking[j +1].pontuacao){
+             Jogador temp = ranking[j];
+             ranking[j] = ranking[j + 1];
+             ranking[j + 1] = temp;
+            }
+        }
+    }
+
+    FILE *file = fopen("ranking.txt", "w");
+    if (file != NULL){
+        int i;
+        for ( i = 0; i < MAX_JOGADORES; i++){
+            fprintf(file," %s %d\n", ranking[i].nome, ranking[i].pontuacao);
+        }
+        fclose(file);
     }
 }
 
 int main(){
-     al_init();
+    al_init();
     al_install_keyboard();
     al_init_primitives_addon();
     al_set_new_display_flags(ALLEGRO_OPENGL);
@@ -86,8 +139,6 @@ int main(){
     short fleg_curva = 0; 
     float velocidade = 12.0;
     ALLEGRO_TIMER *timer = al_create_timer(1.0 / velocidade);
-
-
 
     Nodo *cabeca = (Nodo *)malloc(sizeof(Nodo));
     cabeca->pos.x = 450;
@@ -120,17 +171,10 @@ int main(){
     ALLEGRO_BITMAP *img_corpo = al_load_bitmap("./corpo.png");
     ALLEGRO_BITMAP *img_cauda = al_load_bitmap("./cauda.png");
     ALLEGRO_BITMAP *img_curva = al_load_bitmap("./curva.png");
-
-     ALLEGRO_FONT *fonte = al_create_builtin_font();
+    ALLEGRO_FONT *fonte = al_create_builtin_font();
     int pontos = 0;
-    
 
-    if (!background){
-        printf("ERRO: Nao foi possivel carregar fundo.jpg\n");
-    }
-    if (!img_maca || !img_cabeça){
-        printf("AVISO: Imagem maca.png ou cabeça.png nao encontradas! Usando quadrados coloridos.\n");
-    }
+    ler_ranking();
 
     Curva curvas[100];
     int qtd_curvas = 0;
@@ -140,10 +184,9 @@ int main(){
         ALLEGRO_EVENT evento;
         al_wait_for_event(fila, &evento);
 
-       if (evento.type == ALLEGRO_EVENT_TIMER)
-        {
+       if (evento.type == ALLEGRO_EVENT_TIMER){
             //A Cabeça puxa o Corpo
-            if (direcao != PARADA) {
+            if (direcao != PARADA){
                 int prev_x = cabeca->pos.x;
                 int prev_y = cabeca->pos.y;
                 int temp_x, temp_y;
@@ -156,7 +199,7 @@ int main(){
 
                 //O corpo da cabeça
                 Nodo *aux = cabeca->proximo;
-                while (aux != NULL) {
+                while (aux != NULL){
                     temp_x = aux->pos.x;
                     temp_y = aux->pos.y;
                     
@@ -185,27 +228,27 @@ int main(){
             {
                 //para a maça n nascer nos obstaculos
                 int maca_valida = 0;
-                while (maca_valida == 0) {
+                while (maca_valida == 0)
+                {
                     comida_x = rand() % 780;
                     comida_y = rand() % 580;
                     maca_valida = 1;
 
-                    for (int i = 0; i < 5; i++) {
+                    for (int i = 0; i < 5; i++)
+                    {
                         int obs_x = obstaculos[i][0];
                         int obs_y = obstaculos[i][1];
 
                         if (comida_x < obs_x + 30 &&
                             comida_x + 20 > obs_x &&
                             comida_y < obs_y + 30 &&
-                            comida_y + 20 > obs_y) 
-                        {
-                             //se a maça cair no obstaculos o laço vai rodar de novo
-                            maca_valida = 0;
-                            break; 
+                            comida_y + 20 > obs_y) {
+                         //se a maça cair no obstaculos o laço vai rodar de novo
+                         maca_valida = 0;
+                         break; 
                         }
                     }
                 }
-                printf("Comeu a maça!\n");
                 tam_cobra += 1;
 
                 crescer_cabeça(cabeca);
@@ -214,51 +257,57 @@ int main(){
                 if(pontos % 50 == 0)//aumentar a velocidade da cabeça
                 velocidade += 3.0;
                 al_set_timer_speed(timer, 1.0 / velocidade);
-                printf("A velocidade da cabeça aumentou:");
             }
             
             //Obstaculos para melhorar a dinamica do jogo
-            for (int i = 0; i < 5; i++){
+            int i;
+            for ( i = 0; i < 5; i++){
                 int obs_x = obstaculos[i][0];
                 int obs_y = obstaculos[i][1];
 
                 if (cabeca->pos.x < obs_x + 30 &&
                     cabeca->pos.x + 20 > obs_x &&
                     cabeca->pos.y < obs_y + 30 &&
-                    cabeca->pos.y + 20 > obs_y)
-                    {
-                         printf("GAME OVER! Bateu nos obstaculos\n");
-                        rodando = 0;
-                    }
-            }
-        }
+                    cabeca->pos.y + 20 > obs_y){
 
-        else if (evento.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
-        {
+                        printf("\n=== GAME OVER ===\n");
+                        printf("Sua pontuacao final: %d\n", pontos);
+                        printf("Digite seu nome para o ranking: ");
+
+                        char nome_jogador[100];
+                        scanf(" %[^\n]", nome_jogador);
+                        int k;
+                        for ( k = 0; k < nome_jogador[k] != '\0'; k++){
+                            if (nome_jogador[k] == ' ') nome_jogador[k] = '_';
+                        }
+                    salvar_ordenar_ranking(nome_jogador, pontos);
+                    
+                    rodando = 0;
+                }
+            }
+
+        }else if (evento.type == ALLEGRO_EVENT_DISPLAY_CLOSE){
             rodando = 0;
-        }
-        else if (evento.type == ALLEGRO_EVENT_KEY_DOWN)
-        {
-            printf("Tecla pressionada: %d\n", evento.keyboard.keycode);
-            switch (evento.keyboard.keycode) //movimento da cabeça
-            {
+        }else if (evento.type == ALLEGRO_EVENT_KEY_DOWN){
+            //movimento da cabeça
+            switch (evento.keyboard.keycode){
             case ALLEGRO_KEY_LEFT:
                 if (direcao != DIREITA){
                     direcao = ESQUERDA;
                     cabeca->angulo = (PI/2);
                     if(fleg_curva){
-                        curvas[qtd_curvas].ordem = 0;
-                        qtd_curvas += 1;
-                    }
+                 curvas[qtd_curvas].ordem = 0;
+                 qtd_curvas += 1;
+                }
                 }
                 break;
             case ALLEGRO_KEY_RIGHT:
-                if (direcao != ESQUERDA) {
+                if (direcao != ESQUERDA){
                     direcao = DIREITA;
                     cabeca->angulo = -(PI/2);
                      if(fleg_curva){
-                         curvas[qtd_curvas].ordem = 0;
-                        qtd_curvas += 1;
+                     curvas[qtd_curvas].ordem = 0;
+                     qtd_curvas += 1;
                     }
                 }
                 break;
@@ -267,8 +316,8 @@ int main(){
                     direcao = CIMA;
                     cabeca->angulo = PI;
                      if(fleg_curva){
-                         curvas[qtd_curvas].ordem = 0;
-                        qtd_curvas += 1;
+                     curvas[qtd_curvas].ordem = 0;
+                     qtd_curvas += 1;
                     }
                 }
                 break;
@@ -277,8 +326,8 @@ int main(){
                     direcao = BAIXO;
                     cabeca->angulo = 0;
                      if(fleg_curva){
-                         curvas[qtd_curvas].ordem = 0;
-                        qtd_curvas += 1;
+                     curvas[qtd_curvas].ordem = 0;
+                     qtd_curvas += 1;
                     }
                 }
                 break;
@@ -288,27 +337,24 @@ int main(){
             }
         }
 
-        if (desenhar && al_is_event_queue_empty(fila))
-        {
+        if (desenhar && al_is_event_queue_empty(fila)){
             al_clear_to_color(al_map_rgb(0, 0, 0));
 
-            if (background)
-            {
+            if (background){
                 al_draw_scaled_bitmap(background,0, 0, al_get_bitmap_width(background), al_get_bitmap_height(background), 0, 0, 800, 600, 0);
             }
             
             //Placar 
             al_draw_textf(fonte, al_map_rgb(255, 255, 255), 10, 10, 0, "SCORE: %d", pontos);
-            
-            for (int i = 0; i < 5; i++)
-            {
+            int i;
+            for (i = 0; i < 5; i++){
                 int obs_x = obstaculos[i][0];
                 int obs_y = obstaculos[i][1];
                 al_draw_filled_rectangle(obs_x, obs_y, obs_x + 30, obs_y + 30, al_map_rgb(100, 100, 100));
             }
-            if (img_maca) {
+            if (img_maca){
                 al_draw_scaled_bitmap(img_maca, 0, 0, al_get_bitmap_width(img_maca), al_get_bitmap_height(img_maca), comida_x, comida_y, 20, 20, 0);
-            } else {
+            }else{
                 al_draw_filled_rectangle(comida_x, comida_y, comida_x + 20, comida_y + 20, al_map_rgb(255, 0, 0));
             }
             //A imagem da cabeça no jogo
@@ -319,31 +365,31 @@ int main(){
             while (aux != NULL){
                 float angulo_atual = 0;
 
-                if (aux == cabeca){
+                if (aux == cabeca)
+                {
                     angulo_atual = cabeca->angulo;
                 }else if (frente != NULL){
-                    if (frente->pos.x < aux->pos.x) angulo_atual = (PI / 2);//Esquerda
-                    else if (frente->pos.x > aux->pos.x) angulo_atual = -(PI /2);//Direita
-                    else if (frente->pos.y < aux->pos.y) angulo_atual = PI;//cima
-                    else if (frente->pos.y > aux->pos.y) angulo_atual =0;//Baixo
-                }
+                     if (frente->pos.x < aux->pos.x) angulo_atual = (PI / 2);//Esquerda
+                     else if (frente->pos.x > aux->pos.x) angulo_atual = -(PI /2);//Direita
+                     else if (frente->pos.y < aux->pos.y) angulo_atual = PI;//cima
+                     else if (frente->pos.y > aux->pos.y) angulo_atual =0;//Baixo
+                    }
                 //a imagem da cabeça rotacionando
-                if (aux == cabeca && img_cabeça)
-                {
+                if (aux == cabeca && img_cabeça){
                     al_draw_scaled_rotated_bitmap(img_cabeça, al_get_bitmap_width(img_cabeça)/2, al_get_bitmap_height(img_cabeça)/2, aux->pos.x + 10, aux->pos.y + 10, 0.5, 0.5, angulo_atual, 0);
-                }
-                else if (aux->proximo == NULL && aux != cabeca && img_cauda){
+                }else if (aux->proximo == NULL && aux != cabeca && img_cauda){
                     al_draw_scaled_rotated_bitmap(img_cauda, al_get_bitmap_width(img_cauda)/2, al_get_bitmap_height(img_cauda)/2, aux->pos.x + 10, aux->pos.y + 10, 0.5, 0.5, angulo_atual + PI, 0);
-                }
-                else if(img_corpo && aux != cabeca && aux-> proximo != NULL ){
+                }else if(img_corpo && aux != cabeca && aux-> proximo != NULL ){
                     Nodo *tras = aux->proximo;
-                    if(frente->pos.x == tras->pos.x || frente->pos.y == tras->pos.y) {
+                    if(frente->pos.x == tras->pos.x || frente->pos.y == tras->pos.y){
                      al_draw_scaled_rotated_bitmap(img_corpo, al_get_bitmap_width(img_corpo)/2, al_get_bitmap_height(img_corpo)/2, aux->pos.x + 10, aux->pos.y + 10, 0.5, 0.5, angulo_atual, 0);
-                }
-                else if (img_curva){
-                    float angulo_curva = 0;
-
-                         // curva para cima e direita
+                    }else if (img_curva){
+                        if (abs(frente->pos.x - tras->pos.x) > 40 || abs(frente->pos.y - tras->pos.y) > 40) {
+                            al_draw_scaled_rotated_bitmap(img_corpo, al_get_bitmap_width(img_corpo)/2, al_get_bitmap_height(img_corpo)/2, aux->pos.x + 10, aux->pos.y + 10, 0.5, 0.5, angulo_atual, 0);
+                        }else{
+                           float angulo_curva = 0; 
+                        
+                        // curva para cima e direita
                         if ((frente->pos.y < aux->pos.y && tras->pos.x > aux->pos.x) || (tras->pos.y < aux->pos.y && frente->pos.x > aux->pos.x)) angulo_curva = 0;
                         // curva para direita e baixo
                         else if ((frente->pos.x > aux->pos.x && tras->pos.y > aux->pos.y) || (tras->pos.x > aux->pos.x && frente->pos.y > aux->pos.y)) angulo_curva = PI / 2;
@@ -352,8 +398,9 @@ int main(){
                         // curva para esquerda e cima
                         else if ((frente->pos.x < aux->pos.x && tras->pos.y < aux->pos.y) || (tras->pos.x < aux->pos.x && frente->pos.y < aux->pos.y)) angulo_curva = -PI / 2;
 
-                     al_draw_scaled_rotated_bitmap(img_curva, al_get_bitmap_width(img_curva)/2, al_get_bitmap_height(img_curva)/2, aux->pos.x + 10, aux->pos.y + 10, 0.5, 0.5, angulo_atual, 0);
+                     al_draw_scaled_rotated_bitmap(img_curva, al_get_bitmap_width(img_curva)/2, al_get_bitmap_height(img_curva)/2, aux->pos.x + 10, aux->pos.y + 10, 0.5, 0.5, angulo_curva + PI, 0);
                     }
+                }
                 }else{
                    al_draw_filled_rectangle(aux->pos.x, aux->pos.y, aux->pos.x + 20, aux->pos.y + 20, al_map_rgb(0, 255, 0));
                 }
@@ -374,7 +421,7 @@ int main(){
 
         Nodo *atual = cabeca;
         Nodo *prox;
-        while(atual != NULL) {
+        while(atual != NULL){
             prox = atual->proximo;
             free(atual);
             atual = prox;
