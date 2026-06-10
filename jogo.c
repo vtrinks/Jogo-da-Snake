@@ -1,16 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <allegro5/allegro.h>
-#include <allegro5/allegro_primitives.h>
-#include <allegro5/allegro_image.h>
-#include <time.h>
-#include <allegro5/allegro_font.h>
-#include <allegro5/allegro_ttf.h>
-#include <locale.h>
 
+// inclusão das tads
+#include "cobra.h"
+#include "jogador.h"
+#include "bibliotecas.h"
 #define PI 3.14
-#define MAX_JOGADORES 3
 
 typedef enum{
     PARADA,
@@ -20,114 +13,9 @@ typedef enum{
     BAIXO
 }Direcao;
 
-typedef struct Coordenada {
-    int x, y;
-}Coordenada;
 
-typedef struct Nodo{
-    Coordenada pos;
-    float angulo;
-    struct Nodo *proximo;
-} Nodo;
-
-typedef struct jogador{
-    char nome[50];
-    int pontuacao;
-} Jogador;
-Jogador ranking [MAX_JOGADORES];
-
-typedef struct curva{
-    int ordem;
-    float angulo;
-}Curva;
-
-
-//onde fica os obstaculos do jogo
 int obstaculos[5][2] ={ {150, 150}, {650, 150}, {400, 300}, {150, 450}, {650, 450}};
 
-// Funcao para aumentar a cabeça
-void crescer_cabeça(Nodo *cabeca){
-    Nodo *novo = (Nodo *)malloc(sizeof(Nodo));
-    
-    novo->pos.x = -100; 
-    novo->pos.y = -100;
-    novo->proximo = NULL;
-
-    //Achar a ponta da cauda
-    Nodo *aux = cabeca;
-    while (aux -> proximo != NULL){
-     aux = aux -> proximo;
-    }
-
-    aux->proximo = novo; 
-  
-}
-
-void ler_ranking(){
-    FILE *file = fopen("ranking.txt", "r");
-    if (file != NULL){
-    int i;
-        for ( i = 0; i < MAX_JOGADORES; i++){
-            if (fscanf(file, "%s %d", ranking[i].nome, &ranking[i].pontuacao) != 2){
-             strcpy(ranking[i].nome, "vazio");
-             ranking[i].pontuacao = 0;
-            }
-        }
-        fclose(file);
-    }else{
-        int i;
-        for ( i = 0; i < MAX_JOGADORES; i++){
-         strcpy(ranking[i].nome, "vazio");
-         ranking[i].pontuacao = 0;
-        }
-        
-    }
-}
-
-int busca_jogador(char *nome){
-    int i;
-    for ( i = 0; i < MAX_JOGADORES; i++){
-        if (strcmp(ranking[i].nome, nome) == 0){
-         return i;
-        }
-    }
-    return -1;
-}
-
-void salvar_ordenar_ranking(char *nome, int pontos_atuais){
-    int pos = busca_jogador(nome);
-    
-    if (pos != -1){
-        if (pontos_atuais > ranking[pos].pontuacao){
-            ranking[pos].pontuacao = pontos_atuais;
-        }
-    }else{
-        if (pontos_atuais > ranking[MAX_JOGADORES -1 ].pontuacao){
-            strcpy(ranking[MAX_JOGADORES -1].nome, nome);
-            ranking[MAX_JOGADORES - 1].pontuacao = pontos_atuais;
-        }
-    }
-
-    int i, j;
-    for ( i = 0; i < MAX_JOGADORES -1; i++){
-        for ( j = 0; j < MAX_JOGADORES -1 -i; j++){
-            if (ranking[j].pontuacao < ranking[j +1].pontuacao){
-             Jogador temp = ranking[j];
-             ranking[j] = ranking[j + 1];
-             ranking[j + 1] = temp;
-            }
-        }
-    }
-
-    FILE *file = fopen("ranking.txt", "w");
-    if (file != NULL){
-        int i;
-        for ( i = 0; i < MAX_JOGADORES; i++){
-            fprintf(file," %s %d\n", ranking[i].nome, ranking[i].pontuacao);
-        }
-        fclose(file);
-    }
-}
 
 int main(){
     al_init();
@@ -135,6 +23,7 @@ int main(){
     al_init_primitives_addon();
     al_set_new_display_flags(ALLEGRO_OPENGL);
     setlocale(LC_ALL, "portuguese");
+
     ALLEGRO_DISPLAY *display = al_create_display(800, 600);
     short fleg_curva = 0; 
     float velocidade = 12.0;
@@ -233,8 +122,8 @@ int main(){
                     comida_x = rand() % 780;
                     comida_y = rand() % 580;
                     maca_valida = 1;
-
-                    for (int i = 0; i < 5; i++)
+                    int i;
+                    for (i = 0; i < 5; i++)
                     {
                         int obs_x = obstaculos[i][0];
                         int obs_y = obstaculos[i][1];

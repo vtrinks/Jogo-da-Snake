@@ -1,3 +1,3 @@
- vtr 40
- vazio 0
- vazio 0
+ cd_"c:\Users\VITOR_EMANOEL\OneDrive\Desktop\FACULDADª 170
+ A 10
+ B 8
